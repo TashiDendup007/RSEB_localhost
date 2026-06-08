@@ -1,0 +1,134 @@
+<?php 
+  include('../FILES/sessionStartFile_cdscss.php');
+  include ('../../CONNECTIONS/db.php');
+?>
+<!DOCTYPE html>
+<html>
+<head>
+<?php include('../NAV/components.php'); ?>
+</head>
+<body class="hold-transition skin-green sidebar-mini">
+  <?php include('../../GifLoader/gifComponent.php'); ?>
+  <div class="wrapper">
+    <?php include('../NAV/navigation.php'); include ('../../CONNECTIONS/confirmationMessage.php'); ?>
+  <div class="content-wrapper">
+    <section class="content-header">
+      <h1>
+        <small></small>
+      </h1>
+      <ol class="breadcrumb">
+        <li><a href="cds-css-landing.php"><i class="fa fa-dashboard"></i> Home</a></li>
+         <li><a href="#">Netted Summary</a></li>      
+      </ol>
+    </section>
+    <section class="content">
+      <div class="modal fade" id="myModal" role="dialog"></div>
+      <div class="box">
+        <div class="box-header with-border">
+          <h4 class="box-title">Netted Summary Report</h4>
+          <div class="box-tools pull-right">
+            <button type="button" class="btn btn-box-tool" data-widget="collapse" data-toggle="tooltip" title="Collapse">
+              <i class="fa fa-minus"></i></button>
+            <button type="button" class="btn btn-box-tool" data-widget="remove" data-toggle="tooltip" title="Remove">
+              <i class="fa fa-times"></i></button>
+          </div>
+        </div>
+        <div class="box-body">
+          <div class="col-lg-4 col-md-4">
+            <label>Select Broker</label>
+            <select class="form-control" id="brokerSelect" name="brokerSelect" required>
+              <option value="">Select Broker</option>
+              <?php
+                $brokerQuery = "SELECT broker_id, broker_name FROM brokers ORDER BY broker_name";
+                $brokerResult = $conn->query($brokerQuery);
+                while($broker = $brokerResult->fetch_assoc()) {
+                  echo '<option value="'.$broker['broker_id'].'">'.$broker['broker_name'].'</option>';
+                }
+              ?>
+            </select>
+          </div>
+          <div class="col-lg-4 col-md-4">
+            <label>From Date</label>
+            <div class="input-group date">
+              <div class="input-group-addon">
+                <i class="fa fa-calendar"></i>
+              </div>
+              <input type="date" class="form-control pull-right" name="from_date" id="from_date" onChange="return checkDate();" required>
+            </div>
+          </div>
+          <div class="col-lg-4 col-md-4">
+            <label>To Date</label>
+            <div class="input-group date">
+              <div class="input-group-addon">
+                <i class="fa fa-calendar"></i>
+              </div>
+              <input type="date" class="form-control pull-right" name="to_date" id="to_date" required>
+            </div>
+          </div>
+        </div>
+        <div class="box-footer">
+            <div class="col-lg-12 col-md-12">          
+              <button type="button" class="btn btn-success" id="generateNet" name="generateNet">
+                <i class="fa fa-calculator"></i> Generate Net
+              </button>
+            </div>
+        </div>
+        <div id="netResults"></div>
+      </div>  
+    </section>
+  </div>
+  <?php include('../NAV/footer.php'); ?>  
+</div>
+<script type="text/javascript">
+  function checkDate(){
+    var fromDate = new Date(document.getElementById("from_date").value);
+    var toDate = new Date(document.getElementById("to_date").value);
+    
+    if (fromDate > toDate){
+      alert("To date must be greater than or equal to From date");
+      document.getElementById("to_date").value = '';
+      return false;
+    }
+    return true;
+  }
+
+  $('#generateNet').click(function() {
+    var brokerId = $("#brokerSelect").val();
+    var fromDate = $("#from_date").val();
+    var toDate = $("#to_date").val();
+    
+    if(!brokerId) {
+      alert("Please select a broker");
+      return false;
+    }
+    
+    if(!fromDate || !toDate) {
+      alert("Please select both date fields");
+      return false;
+    }
+    
+    showLoading();
+    
+    $.ajax({
+      type: "POST",
+      url: "load_net.php",
+      data: {
+        broker: brokerId,
+        fromDate: fromDate,
+        toDate: toDate,
+        reportType: 'Net'
+      },
+      success: function(data) {
+        hideloading();
+        $("#netResults").html(data);
+      },
+      error: function(xhr, status, error) {
+        hideloading();
+        console.error("AJAX Error: " + status + " - " + error);
+        alert("Error generating report. Please try again.");
+      }
+    });
+  });
+</script>
+</body>
+</html>

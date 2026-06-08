@@ -1,0 +1,770 @@
+<?php 
+  include ('session_start_file.php');
+  include ('../../CONNECTIONS/db.php');
+
+  $check = $dbh->prepare("SELECT a.institution_id, c.participant_code
+      FROM adm_institution a
+      INNER JOIN adm_participants b ON a.institution_id = b.institution_id
+      INNER JOIN users c ON b.participant_code = c.participant_code
+      WHERE c.username = :un
+  ");
+  $check->bindParam(':un', $username);
+  $check->execute();
+  $res = $check->fetch();
+  $institution_id = $res['institution_id'];
+?>
+<!DOCTYPE html>
+<html>
+<head>
+  <?php include('../NAV/components.php'); ?>
+</head>
+<body class="hold-transition skin-red sidebar-mini">
+  <?php include('../../GifLoader/gifComponent.php'); ?>
+  <div class="wrapper">
+    <?php include('../NAV/navigation.php'); include ('../../CONNECTIONS/confirmationMessage.php'); ?>
+    <div class="content-wrapper">
+      <div id="message"></div>
+      <section class="content-header">
+        <h1>
+          <small></small>
+        </h1>
+        <ol class="breadcrumb">
+          <li><a href="bbo-landing.php"><i class="fa fa-dashboard"></i> Home</a></li>
+           <li><a href="#">Account Registration</a></li>      
+        </ol>
+      </section>
+      <section class="content">
+        <div class="modal fade" id="myModal" role="dialog"></div>
+        <?php include('../NAV/orderNav.php'); ?>
+        <div class="box">
+
+          <!-- Add Nominee Modal -->
+          <div class="row">
+            <div class="col-lg-12 text-right">
+              <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal"><i class="fa fa-plus"></i> Add Nominee <i class="fa fa-user"></i></button>
+            </div>
+          </div>
+          <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h4 class="modal-title text-center" id="exampleModalLabel">Details of the Nominee</h4>
+                  <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <div class="modal-body">
+                  <div id="nominee_message"></div>
+
+                  <div class="row form-horizontal">
+                    <div class="col-lg-5">
+                      <label>CID: <font color="red">*</font></label> 
+                        <input type="number" name="applicant_cid_no" id="applicant_cid_no" class="form-control" onKeyPress="if(this.value.length==11) return false;" onchange="get_application_name(this.value)" placeholder="Enter the CID Number of Applicant" required>
+                    </div>
+                    <div class="col-lg-7" id="applicant_dtls_id"></div>
+
+                    <div class="col-lg-12" style="margin-top: 10px;">
+                      <div class="table-responsive">
+                        <table id="nominee_table_id" class="table table-bordered table-striped" width="100%">
+                          <thead style="background-color: #b4b4b4;">
+                            <th>#</th>
+                            <th>Nominee Name</th>
+                            <th>Nominee CID</th>
+                            <th>Relation to Applicant</th>
+                            <th>Security Type</th>
+                            <th>Ownership(%)</th>
+                          </thead>
+                          <tbody id="tbody_nominee_id">
+                            <tr>
+                              <td>1</td>
+                              <td>
+                                <input type="text" name="nom_name[]" id="nom_name[]" class="form-control" required>
+                              </td>
+                              <td>
+                                <input type="number" name="nom_cid[]" id="nom_cid[]" onKeyPress="if(this.value.length==11) return false;"  class="form-control" required>
+                              </td>
+                              <td>
+                                <select name="nom_relation[]" id="nom_relation[]" class="form-control" required>
+                                  <option value="">--Select Relation--</option>
+                                    <?php 
+                                      $stmt = $dbh->prepare("SELECT id, name FROM relationship_masters WHERE STATUS = 1");
+                                      $stmt->execute();
+                                      $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                                      foreach ($rows as $key => $val) {
+                                        echo'<option value="'.$val['name'].'">'.$val['name'].'</option>';
+                                      }
+                                    ?>
+                                </select>
+                              </td>
+                              <td>
+                                <select name="nom_sec_type[]" id="nom_sec_type[]" class="form-control" required>
+                                  <option value="">--Select Type--</option>
+                                  <option value="SECURITIES">SECURITIES</option>
+                                  <option value="BOND">BOND</option>
+                                  <option value="BOTH">BOTH</option>
+                                </select>
+                              </td>
+                              <td>
+                                <input type="number" name="nom_percent[]" onKeyPress="if(this.value.length==5) return false;"  id="nom_percent[]" class="form-control" required>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td colspan="6" class="text-left">
+                                <button type="button" class="btn btn-info btn-sm" onclick="add_nominee()"><i class="fa fa-plus"></i> Add</button>
+                                <button type="button" class="btn btn-warning btn-sm" onclick="remove_nominee()"><i class="fa fa-minus"></i> Remove</button>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-footer" id="modal_footer_id">
+                  <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fa fa-times"></i> Close</button>
+                  <button type="button" class="btn btn-primary" name="save__nominee__dtls" id="save__nominee__dtls"><i class="fa fa-check"></i> Save Nominee</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="box-header with-border">
+            <h4 class="box-title">Account Registration</h4>
+            <!-- <div class="box-tools pull-right">
+              <button type="button" class="btn btn-box-tool" data-widget="collapse" data-toggle="tooltip" title="Collapse">
+                <i class="fa fa-minus"></i></button>
+              <button type="button" class="btn btn-box-tool" data-widget="remove" data-toggle="tooltip" title="Remove">
+                <i class="fa fa-times"></i></button>
+            </div> -->
+          </div>
+          <form action="" method="POST">
+            <div class="box-body">
+              <div class="row form-horizontal">
+                
+                <div class="col-lg-4 col-md-4 col-sm-12">
+                  <label for="acc_type">Account Type</label>
+                  <select name="acc_type" id="acc_type" class="form-control" onchange="getAccountType(this.value)" required>
+                    <option value="">--Select an account type--</option>
+                    <option value="I">Individual</option>
+                    <option value="J">Corporate</option>
+                    <option value="A">Association</option>
+                    <option value="R">Religious</option>
+                  </select>
+                </div>
+                
+                <div id="accType1Container">
+                  <div class="col-lg-4 col-md-4 col-sm-12">
+                    <label for="cid_no">CID<span style="color:red;">*</span></label>
+                    <input type="number" class="form-control" name="cid_no" id="cid_no" onKeyPress="if(this.value.length==11) return false;" required>
+                    <span id="errCid" style="color: red;"></span>
+                  </div>
+
+                  <div class="col-lg-4 col-md-4 col-sm-12">
+                    <label for="title">Title<span style="color:red;">*</span></label>
+                    <select id="title" name="title" class="form-control" required>
+                      <option value="">-- Select --</option>
+                      <?php 
+                        $stmt = $dbh->prepare("SELECT id, title_name FROM title_master WHERE status = 1 ORDER BY title_name ASC");
+                        $stmt->execute();
+                        $rows = $stmt->fetchAll();
+                        foreach ($rows as $row) {
+                          echo'<option value="'.$row['title_name'].'">'.$row['title_name'].'</option>';
+                        }
+                      ?>
+                    </select>
+                  </div> 
+
+                  <div class="col-lg-4 col-md-4 col-sm-12">
+                    <label for="first_name">First Name<span style="color:red;">*</span></label>
+                    <input type="text" class="form-control" name="first_name" id="first_name" autocomplete="off" required>
+                  </div>
+
+                  <div class="col-lg-4 col-md-4 col-sm-12">
+                    <label for="last_name">Last Name</label>
+                    <input type="text" class="form-control" name="last_name" id="last_name">
+                  </div>
+
+                  <div class="col-lg-4 col-md-4 col-sm-12">
+                    <label>Gender<span style="color:red;">*</span></label>
+                    <select id="gender" name="gender" class="form-control" required>
+                      <option value="">-- Select --</option>
+                      <?php  
+                      $stmt = $dbh->prepare("SELECT id, gender FROM tbl_gender_master WHERE status = 1 ORDER BY gender ASC");
+                      $stmt->execute();
+                      $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                      foreach($rows as $state) {
+                        echo '<option value="'.$state['id'].'">'.$state['gender'].'</option>';
+                      }
+                      ?>
+                    </select>
+                  </div>
+
+                  <div class="col-lg-4 col-md-4 col-sm-12">
+                    <label>Marital Status<span style="color:red;">*</span></label>
+                    <select id="marital" name="marital" class="form-control" required>
+                      <option value="">-- Select --</option>
+                      <?php 
+                      $stmt = $dbh->prepare("SELECT id, name FROM tbl_marital_status WHERE status = 1 ORDER BY name ASC");
+                      $stmt->execute();
+                      $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                      foreach($rows as $state) {
+                        echo'<option value="'.$state['id'].'">'.$state['name'].'</option>';
+                      }
+                      ?>
+                    </select>
+                  </div>
+
+                  <div class="col-lg-4 col-md-4 col-sm-12">
+                      <label>DOB<span style="color:red;">*</span></label>
+                      <input type="date" class="form-control" name="dob" id="dob" onchange="checkAge(this.value)" required>
+                  </div>
+
+                  <div class="col-lg-4 col-md-4 col-sm-12">
+                    <label for="nationality">Nationality<span style="color:red;">*</span></label>
+                    <input type="text" class="form-control" name="nationality" id="nationality" required>
+                  </div>
+
+                  <div class="col-lg-4 col-md-4 col-sm-12">
+                    <label for="occupation">Occupation<span style="color:red;">*</span></label>
+                    <select id="occupation" name="occupation" class="form-control" required>
+                      <option value="">-- Select --</option>
+                      <?php 
+                        $q = $dbh->prepare("SELECT * FROM occupation ORDER BY occupation_name ASC");
+                        $q->execute();
+                        $occupation = $q->fetchAll(PDO::FETCH_ASSOC);
+                        foreach($occupation as $state) {
+                          echo'<option value="'.$state['occupation'].'">'.$state['occupation_name'].'</option>';
+                        }
+                      ?>
+                    </select>
+                  </div>
+                </div>
+
+                <div id="accType2Container" style="display: none;">
+                  <div class="col-lg-8 col-md-8 col-sm-12">
+                    <label for="company_name">Company/Association Name<span style="color:red;">*</span></label>
+                    <input type="text" class="form-control" name="company_name" id="company_name" required>
+                  </div>
+                  <div class="col-lg-4 col-md-4 col-sm-12">
+                    <label for="licenseNo">Registration/License No<span style="color:red;">*</span></label>
+                    <input type="text" class="form-control" name="licenseNo" id="licenseNo" required>
+                  </div>
+                  <div class="col-lg-4 col-md-4 col-sm-12">
+                    <label for="disn_no">DISN<span style="color:red;">*</span><span style="font-size: 11px;">[Ask From RSEB Office]</span></label>
+                    <input type="text" maxlength="11" class="form-control" name="disn_no" id="disn_no" onKeyPress="if(this.value.length==11) return false;" required>
+                  </div>
+
+                  <div class="col-lg-4 col-md-4 col-sm-12">
+                    <label for="contact_person">Contact Person<span style="color:red;">*</span></label>
+                    <input type="text" class="form-control" name="contact_person" id="contact_person" required>
+                  </div>
+                </div>
+
+                <div class="col-lg-4 col-md-4 col-sm-12">
+                  <label for="tpn">TPN<span style="color: red;padding: auto;" id="tpnAsterisk">*</span></label>
+                  <input type="text" maxlength="9" class="form-control" name="tpn" id="tpn">
+                </div>
+
+                <div class="col-lg-4 col-md-4 col-sm-12">
+                  <label for="phone">Phone No<span style="color:red;">*</span></label>
+                  <input type="number" class="form-control" name="phone" id="phone" onKeyPress="if(this.value.length === 8) return false;" autocomplete="off" required>
+                </div>
+
+                <div class="col-lg-4 col-md-4 col-sm-12">
+                  <label for="email">Email</label>
+                  <input type="email" class="form-control" name="email" id="email" autocomplete="off">
+                </div>
+
+                <div class="clearfix"></div>
+                <p style="padding-left: 18px; font-weight: bold; margin-top: 10px; color: #09895b;" class="text-center">Permanent Address</p>
+                <hr style="margin-top: 7px!important; margin-bottom: 5px!important;">
+
+                <div class="col-lg-4 col-md-4 col-sm-12">
+                  <label>Dzongkhag <font color="red">*</font></label>
+                  <select id="dz" name="dz" class="form-control" onchange="populatelist(this.value, 'gewog_list', '')" required>
+                  <option value="">-- Select --</option>
+                    <?php 
+                      $q = $dbh->prepare("SELECT DzongkhagID, DzongkhagName FROM tbldzongkhag ORDER BY DzongkhagName ASC");
+                      $q->execute();
+                      foreach($q as $state) {
+                        echo '<option value="'.$state['DzongkhagID'].'">'.$state['DzongkhagName'].'</option>';
+                      }
+                    ?>
+                  </select>
+                </div>
+
+                <div class="col-lg-4 col-md-4 col-sm-12">
+                  <label>Gewog<span style="color:red;">*</span></label>
+                  <select id="gewog_id" name="gewog_id" class="form-control" onchange="populatelist(this.value, 'village_list', '')" required>
+                    <option value="">-- Select --</option>
+                  </select>
+                </div>
+
+                <div class="col-lg-4 col-md-4 col-sm-12">
+                  <label>Village<span style="color:red;">*</span></label>
+                  <select id="village_id" name="village_id" class="form-control" required>
+                    <option value="">-- Select --</option>
+                  </select>
+                </div>
+
+                <div class="clearfix"></div>
+                <p style="padding-left: 18px; font-weight: bold; margin-top: 10px; color: #09895b;" class="text-center">Bank Account Details</p>
+                <hr style="margin-top: 7px!important; margin-bottom: 5px!important;">
+
+                <div class="col-lg-4 col-md-4 col-sm-12">
+                  <label for="bank">Bank<span style="color:red;">*</span></label>
+                  <select id="bank" name="bank" class="form-control" required>
+                    <option value="">--Select Bank--</option>
+                    <?php 
+                      $stmt = $dbh->prepare("SELECT bank_id, bank_name FROM banks");
+                      $stmt->execute();
+                      $banks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                      foreach($banks as $state) {
+                        echo'<option value="'.$state['bank_id'].'">'.$state['bank_name'].'</option>';
+                      }
+                    ?>
+                  </select>
+                  <span id="bankError" style="color: red;"></span>
+                </div>
+
+                <div class="col-lg-4 col-md-4 col-sm-12">
+                  <label for="account_no">Account Number<span style="color:red;">*</span></label>
+                  <input type="number" class="form-control" name="account_no" id="account_no" required>
+                </div>
+
+                <div class="col-lg-4 col-md-4 col-sm-12">
+                  <label for="bankAccType">Account Type<font style="color:red;">*</font></label>
+                  <select id="bankAccType" name="bankAccType" class="form-control" required>
+                    <option value="">--Select Account Type--</option>
+                    <option value="Saving Account">Saving Account</option>
+                    <option value="Current Account">Current Account</option>
+                  </select>
+                </div>
+
+                <div class="clearfix"></div>
+                <hr style="margin-top: 7px!important; margin-bottom: 5px!important;">
+                
+                <div class="col-lg-4 col-md-4 col-sm-12" id="guardian_div" style="display: none;">
+                  <label for="guardian_name">Guardian Name<span style="color:red;">*</span></label>
+                  <input type="text" class="form-control" name="guardian_name" id="guardian_name">
+                </div>
+
+                <div class="col-lg-4 col-md-4 col-sm-12">
+                  <label for="commis">Broker Commission<font style="color:red;">*</font></label>
+                  <select id="commis" name="commis" class="form-control">
+                    <option value="">--Select Commission--</option>
+                    <?php 
+                      $q = $dbh->prepare("SELECT bro_comm_id, commission_name, rate FROM bbo_commission WHERE institution_id=:iid ORDER BY bro_comm_id ASC");
+                      $q->bindParam(':iid', $institution_id);
+                      $q->execute();
+                      $selected_comm_id = 1;
+                      foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $state) {
+                          $selected = ($selected_comm_id == $state['rate']) ? ' selected' : '';
+                          echo '<option value="' . htmlspecialchars($state['bro_comm_id']) . '"' . $selected . '>' . htmlspecialchars($state['commission_name']) . '</option>';
+                      }
+                    ?>
+                  </select>
+                </div>
+
+                <div class="col-lg-12">
+                  <label for="address">Address<font style="color:red;">*</font></label>
+                  <textarea class="form-control" name="address" id="address" autocomplete="off" required></textarea>
+                </div>
+
+              </div>
+            </div>
+            <div class="box-footer">
+              <div class="col-lg-4 col-md-4 col-sm-12">
+                <button type="button" class="btn btn-primary" style="display:none" id="save_client" name="save_client" value="<?php echo $_SESSION['sess_username'];?>"><i class="fa fa-database"></i> Save</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-12">
+            <div class="box">
+              <div class="box-header with-border">
+                <h5 class="box-title">Search Account</h5 >
+              </div>
+              <div class="box-body">
+                <form action="" method="POST">
+                  <div class="col-lg-6 col-md-6">
+                    <div class="input-group margin">
+                      <input type="text" class="form-control" name="search_cid" id="search_cid" placeholder="Enter CID/ CD Code/ Name">
+                        <span class="input-group-btn">
+                          <button type="button" class="btn btn-info btn-flat" id="serach_id"><i class="fa fa-search"></i> Search</button>
+                        </span>
+                    </div>
+                    <span id="searchErr" style="color: red;"></span>
+                  </div>
+                </form>
+                <div id="account_detail"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-12">
+            <div class="box">
+              <div class="box-header with-border">
+                <h5 class="box-title">Account Registration List</h5>
+              </div>
+              <div class="box-body">
+                <div class="col-lg-6 col-md-6 col-sm-12">
+                  <label for="from_date">From Date<font color="red">*</font></label>
+                  <div class="input-group date">
+                    <div class="input-group-addon">
+                      <i class="fa fa-calendar"></i>
+                    </div>
+                    <input type="date" class="form-control pull-right" name="from_date" id="from_date" required>
+                  </div>
+                  <span id="f_dateErr" style="color: red;"></span>
+                </div>
+                <div class="col-lg-6 col-md-6 col-sm-12">
+                  <label for="to_date">To Date<font color="red">*</font></label>
+                  <div class="input-group date">
+                    <div class="input-group-addon">
+                      <i class="fa fa-calendar"></i>
+                    </div>
+                    <input type="date" class="form-control pull-right" name="to_date" id="to_date" required>
+                  </div>
+                  <span id="t_dateErr" style="color: red;"></span>
+                </div>
+              </div>
+              <div class="box-footer">
+                <div class="col-lg-6 col-md-6 col-sm-12">          
+                  <button type="button" class="btn btn-primary" id="accs" name="accs" value=""><i class="fa fa-list"></i>  List </button>
+                </div>
+              </div>
+              <div id="details"></div>
+            </div>
+          </div>
+          
+        </div>
+      </section>
+    </div>
+  </div>
+  <?php include('../NAV/footer.php'); ?> 
+</body>
+<script type="text/javascript" src="nominee.js"></script>
+<script type="text/javascript">
+  $( function () {
+    $("#occupation").select2();
+    $("#dz").select2();
+    // $("#dzongkhag_id").select2();
+  });
+
+  $("#save_client").click( function () {
+    showLoading();
+    var acc_type = $("#acc_type").val();
+    var cid = (acc_type == 'I') ? $("#cid_no").val() : $("#disn_no").val();
+    var title = (acc_type == 'I') ? $("#title").val() : '';
+    var first_name = (acc_type == 'I') ? $("#first_name").val() : $("#company_name").val();
+    var last_name = (acc_type == 'I') ? $("#last_name").val() : $("#contact_person").val();
+    
+    var gender = (acc_type == 'I') ? $("#gender").val() : '';
+    var marital = (acc_type == 'I') ? $("#marital").val() : '';
+    var dob = (acc_type == 'I') ? $("#dob").val() : '1900-01-01';
+
+    var nationality = (acc_type == 'I') ? $("#nationality").val() : '';
+    var occupation = (acc_type == 'I') ? $("#occupation").val() : 101;
+
+    var tpn_no = $("#tpn").val();
+    var phone_no = $("#phone").val();
+    var email = $("#email").val();
+
+    var dzongkhag_id = $("#dz").val();
+    var gewog_id = $("#gewog_id").val();
+    var village_id = $("#village_id").val();
+
+    var bank = $("#bank").val();
+    var bank_acc_no = $("#account_no").val();
+    var bank_acc_type = $("#bankAccType").val();
+
+    var commisssion = $("#commis").val();
+    var address = $("#address").val();
+    var user_name = $("#save_client").val();
+    var license_no = (acc_type == 'I') ? '' : $("#licenseNo").val();
+    var guardian_name = ( acc_type === "I" ) ? $("#guardian_name").val() : '';
+    var operation = 'save_client_dtls_new';
+
+    if (acc_type === '' || cid === '' || first_name === '' || dzongkhag_id === '' || gewog_id === '' || village_id === '' || phone_no === '' || bank === '' || bank_acc_no === '' || bank_acc_type === '' || commisssion === '' || address === '') {
+      $("#message").html('<div class="col-lg-12 col-sm-12"><div class="alert alert-danger alert-dismissible"><button type="button" class="close" data-dismiss="alert"aria-hidden="true">&times;</button><i class="icon fa fa-warning"></i> Fill all mandatory fields.</div></div>');
+      showMessage();
+      hideloading();
+      return false;
+    }
+
+    if ((acc_type === 'I' && (title === '' || occupation === '' || nationality === '' || gender === '' || marital === '' || dob === '')) || (acc_type === 'J' && (license_no === '' || last_name === '' || tpn_no === ''))) {
+      $("#message").html('<div class="col-lg-12 col-sm-12"><div class="alert alert-danger alert-dismissible"><button type="button" class="close" data-dismiss="alert"aria-hidden="true">&times;</button><i class="icon fa fa-warning"></i> Fill all mandatory fields.</div></div>');
+      showMessage();
+      hideloading();
+      return false;
+    }
+
+    if (acc_type === 'I' && cid.length < 11) {
+      $("#message").html('<div class="col-lg-12 col-sm-12"><div class="alert alert-danger alert-dismissible"><button type="button" class="close" data-dismiss="alert"aria-hidden="true">&times;</button><i class="icon fa fa-warning"></i> CID Number must be 11 digits.</div></div>');
+      showMessage();
+      hideloading();
+      return false;
+    }
+
+    var data = {
+      atype: acc_type,
+      title: title,
+      fn: first_name,
+      ln: last_name,
+      gender: gender,
+      marital: marital,
+      dob: dob,
+      occupation: occupation,
+      nat: nationality,
+      id: cid,
+      dz: dzongkhag_id,
+      gewog_id: gewog_id,
+      village_id: village_id,
+      tpn: tpn_no,
+      phone: phone_no,
+      email: email,
+      bank: bank,
+      accno: bank_acc_no,
+      bankAccType: bank_acc_type,
+      add: address,
+      commission: commisssion,
+      username: user_name,
+      licenseNo: license_no,
+      guardian_name: guardian_name,
+      save_client_dtls_new: operation,
+    };
+
+    $.ajax({ 
+      type: "POST", 
+      url: "../PROCESS/process.php", 
+      data: data, 
+      dataType: 'html',
+      success: function(response) { 
+        hideloading();
+        $("#message").html(response);
+        showMessage();
+      } 
+    });
+  });
+
+  function populatelist(value, name, serial) {
+      var op = "populateList";
+      $.ajax({
+        type: "POST",
+        url: "../PROCESS/load_function.php",
+        data:"populateList=" + op + "&id=" + value + "&list_name=" + name,
+        success: function(data) {
+          if (name == "gewog_list") {
+            $("#gewog_id").html(data);
+          } else if(name == "village_list") {
+            $("#village_id").html(data);
+          }
+        }
+      });
+  }
+
+  function get_gewog(value)
+  {
+    var op = "populateGewogList";
+    $.ajax({
+        type: "POST",
+        url: "../PROCESS/load_function.php",
+        data:"populateGewogList=" + op + "&id=" + value,
+        success: function(data) {
+          $("#gewog_id").html(data);
+        }
+      });
+
+  }
+
+  function get_village(value)
+  {
+    var op = "populateVillageList";
+    $.ajax({
+        type: "POST",
+        url: "../PROCESS/load_function.php",
+        data:"populateVillageList=" + op + "&id=" + value,
+        success: function(data) {
+          $("#village_id").html(data);
+        }
+      });
+
+  }
+
+  function getAccountType (val) {
+    if (val == '') {
+      $('#save_client').hide();
+    } 
+    else if (val == 'I') {
+      $('#save_client').show();
+      $("#accType1Container").show();
+      $("#accType2Container").hide();
+      $("#tpnAsterisk").hide();
+      $('#tpn').prop('required', false);
+    } 
+    else if (['J', 'A', 'R'].includes(val)) {
+      $('#save_client').show();
+      $("#accType1Container").hide();
+      $("#accType2Container").show();
+      $("#tpnAsterisk").show();
+      $('#tpn').prop('required', true);
+    }
+  }
+
+  function confirmsub() {
+    var atype = $("#atype").val();
+    var bank = $("#bank").val();
+    var boolean = true;
+    
+    if(atype == 'I') {
+      var cid = $("#id").val();
+      if(cid.length < 11){
+        boolean = false;
+        $('#errCid').html("CID Number should be 11 digits");
+        event.preventDefault();
+        return false;
+      }
+    }
+
+    if(bank == 0){
+      boolean = false;
+      $('#bankError').html('Select Bank');
+      event.preventDefault();
+      return false;
+    }
+
+    if(boolean == true){
+      showLoading();
+      return true;
+    }
+  }
+
+  function getState(val) {
+    $.ajax({
+      type: "POST",
+      url: "b-edit.php",
+      data: {  edit_cli: val }, 
+      dataType: 'html',
+      success: function(response) { 
+        $("#myModal").modal();
+        $("#myModal").html(response);
+      },
+      error: function(xhr, status, error) {
+        console.error(xhr.responseText);
+        alert("An error occurred while retrieving the data. Please try again later.");
+      }
+    });
+  }
+
+  function checkAge(dob) {
+    const age = calculateAge(dob);
+    if (age < 18) {
+      $("#guardian_div").show();
+      $("#guardian_name").attr('required', 'true');
+    } else {
+      $("#guardian_div").hide();
+      $("#guardian_name").removeAttr('required');
+    }
+  }
+
+  function calculateAge(dob) {
+    // Parse the date of birth string into a Date object
+    const dobDate = new Date(dob);
+
+    // Get the current date
+    const currentDate = new Date();
+
+    // Calculate the difference in years
+    const age = currentDate.getFullYear() - dobDate.getFullYear();
+
+    // Check if the birthday has occurred this year
+    if (
+      currentDate.getMonth() < dobDate.getMonth() ||
+      (currentDate.getMonth() === dobDate.getMonth() &&
+        currentDate.getDate() < dobDate.getDate())
+    ) {
+      // If the birthday hasn't occurred yet, subtract 1 from the age
+      return age - 1;
+    } else {
+      // If the birthday has occurred, return the calculated age
+      return age;
+    }
+  }
+
+  $('#accs').click( function () {
+    showLoading();
+    var fromDateFld = $("#from_date").val();
+    var toDateFld = $("#to_date").val();
+    var operation = 'accs';
+
+    if(fromDateFld == '') {
+      hideloading();
+      $("#f_dateErr").html("Select From date");
+      return false;
+    }
+    if(toDateFld == '') {
+      hideloading();
+      $("#t_dateErr").html("Select To date");
+      return false;
+    }
+
+    var data = {
+      fromDate: fromDateFld,
+      toDate: toDateFld,
+      accs: operation,
+    };
+
+    $.ajax({
+      type: "POST",
+      url: "load.php",
+      data: data,
+      dataType: 'html',
+      success: function(response) {
+        hideloading();
+        $("#details").show().html(response);
+      }
+    });
+  });
+
+  $("#serach_id").click( function () {
+    var cidNoField = $("#search_cid");
+    var operation = "search_accounts";
+
+    if (cidNoField.val() == "") {
+      $("#searchErr").html("Field Required");
+      return false;
+    }
+
+    var data = {
+      cid_number: cidNoField.val(),
+      search_accounts: operation,
+    };
+
+    $.ajax({ 
+      type: "POST", 
+      url: "searchItem.php", 
+      data: data, 
+      dataType: 'html',
+      success: function(response){ 
+        $("#account_detail").html(response);
+      } 
+    });
+
+  });
+
+  $("#search_cid").click( function () {
+    $("#searchErr").html("");
+  });
+
+  $('#from_date').click( function () {
+    $("#f_dateErr").html("");
+  });
+
+  $('#to_date').click( function () {
+    $("#t_dateErr").html("");
+  });
+</script>
+</html>
