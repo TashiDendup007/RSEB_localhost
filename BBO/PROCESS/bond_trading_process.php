@@ -392,7 +392,7 @@ elseif (isset($_POST['change_bond_order'])) {
 
 		// 4. update bbo finance
 		$final_total_amt = ($side === 'B') ? ($final_total_amt * -1) : $final_total_amt;
-		$bbo_update = $dbh->prepare("UPDATE bbo_finance SET remarks = ?, amount = ? WHERE flag_id = ?");
+		$bbo_update = $dbh->prepare("UPDATE bbo_finance SET remarks = ?, amount = ? WHERE flag_id = ? AND flag = 0");
 		$bbo_update->execute([$remarks, $final_total_amt, $flag_id]);
 
 		// 5. update bond order audits

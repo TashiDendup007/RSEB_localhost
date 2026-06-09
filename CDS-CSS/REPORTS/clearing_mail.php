@@ -65,7 +65,7 @@ if(!empty($from_date) && !empty($to_date)) {
                   </thead>
                   <tbody>';
                   $stmt = $dbh->prepare("
-                      SELECT SUM(lot_size_execute * order_exe_price) AS total_buy_amt 
+                      SELECT SUM(lot_size_execute * {$price_col}) AS total_buy_amt 
                       FROM {$table_name} WHERE status = 0 AND participant_code = ? AND side = 'B' AND order_date BETWEEN ? AND ?
                   ");
                   $stmt->execute([$res['participant_code'], $from_date, $to_date]);
@@ -80,7 +80,7 @@ if(!empty($from_date) && !empty($to_date)) {
                   </tr>';
 
                   $stmt1 = $dbh->prepare("
-                      SELECT SUM(lot_size_execute * order_exe_price) AS total_sell_amt 
+                      SELECT SUM(lot_size_execute * {$price_col}) AS total_sell_amt 
                       FROM {$table_name} WHERE status = 0 AND participant_code = ? AND side = 'S' AND order_date BETWEEN ? AND ?
                   ");
                   $stmt1->execute([$res['participant_code'], $from_date, $to_date]);
@@ -134,14 +134,14 @@ if(!empty($from_date) && !empty($to_date)) {
   $mpdf->WriteHtml($template);
   $pdf = $mpdf->output("", "S");
 
-  sendEmail($pdf, $broker_emails, $trade_date);
+  sendEmail($pdf, $broker_emails, $trade_date, $trade_type);
 } else {
   echo 'Required From and To Date'; 
   die();
 }
 
 
-function sendEmail($pdf, $broker_emails, $trade_date)
+function sendEmail($pdf, $broker_emails, $trade_date, $trade_type)
 {
   //Instantiation and passing `true` enables exceptions
   $mail = new PHPMailer\PHPMailer\PHPMailer();
@@ -158,12 +158,13 @@ function sendEmail($pdf, $broker_emails, $trade_date)
    
       //Recipient
       $mail->setFrom('itrsebl19@gmail.com', 'Royal Securities Exchange of Bhutan (RSEB)');
-      foreach ($broker_emails as $key => $value) {
+      /*foreach ($broker_emails as $key => $value) {
         $mail->addAddress($value['email_add']);
-      }
+      }*/
+      $mail->addAddress('tashi.dendup@rsebl.org.bt');
       
       //Attachment
-      $mail->addStringAttachment($pdf, "ClearingReport_".$trade_date.".pdf");
+      $mail->addStringAttachment($pdf, $trade_type."_ClearingReport_".$trade_date.".pdf");
    
       // Content
       $mail->isHTML(true);

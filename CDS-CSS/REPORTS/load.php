@@ -363,19 +363,19 @@ elseif (!empty($_POST["toDate1"]) && !empty($_POST["fromDate1"]) && !empty($_POS
     <div class="col-lg-12">
         <div class="box-body">';
             $query= $dbh->prepare("SELECT DISTINCT participant_code FROM {$table_name} WHERE order_date BETWEEN :fdate AND :tdate");
-            $query->bindParam(':fdate',$fromDate);
+            $query->bindParam(':fdate', $fromDate);
             $query->bindParam(':tdate', $toDate);
             $query->execute();
             $rows = $query->fetchAll(PDO::FETCH_ASSOC);
             echo 'Netting Position for trade <br> From : '.$fromDate.' - To : '.$toDate;
             foreach ($rows as $res) {
-                echo "<br/><br/><b>MEMBER : ".$res['participant_code']."</b><br>";
+                echo "<br><br><b>MEMBER : ".$res['participant_code']."</b><br>";
 
                 $executed_orders= $dbh->prepare("
                     SELECT DISTINCT a.symbol_id, b.symbol 
                     FROM {$table_name}  a
                     JOIN symbol b ON a.symbol_id = b.symbol_id
-                    WHERE a.status = 0  and a.participant_code = :pc
+                    WHERE a.status = 0 AND a.participant_code = :pc
                 ");
                 $executed_orders->bindParam(':pc', $res['participant_code']);
                 $executed_orders->execute();
@@ -392,6 +392,7 @@ elseif (!empty($_POST["toDate1"]) && !empty($_POST["fromDate1"]) && !empty($_POS
                     </thead>
                     <tbody>";
                     $i = 1;
+                    $diff = 0;
                     foreach($executed_orders as $res1){
                         echo "
                         <tr>
@@ -658,7 +659,8 @@ else if(!empty($_POST["toDate1"]) && !empty($_POST["fromDate1"]) && !empty($_POS
         $sec_type = $_POST['sec_type'];
         
         $table_name = ($sec_type === 'OS') ? 'executed_orders' : 'bond_executed_orders';
-
+        $text_sym = ($sec_type === 'OS') ? 'Equity' : 'Bond';
+        $price_col = ($sec_type === 'OS') ? 'order_exe_price' : 'dirty_price';
         echo'
         <div class="col-lg-12">
             <div class="box-body">';
@@ -670,7 +672,7 @@ else if(!empty($_POST["toDate1"]) && !empty($_POST["fromDate1"]) && !empty($_POS
                 ");
                 $query->execute([$fromDate, $toDate]);
                 $results = $query->fetchAll(PDO::FETCH_ASSOC);
-                echo 'Clearing Instruction For Trade <br> From : '.$fromDate.' - To : '.$toDate;
+                echo 'Clearing Instruction For '.$text_sym.' Trade <br> From : '.$fromDate.' - To : '.$toDate;
                 $i = 1;
                 foreach ($results as $res) {
                     $totalb = 0;
@@ -689,7 +691,7 @@ else if(!empty($_POST["toDate1"]) && !empty($_POST["fromDate1"]) && !empty($_POS
                         <tbody>";
 
                         $stmt = $dbh->prepare("
-                            SELECT SUM(lot_size_execute * order_exe_price) AS total_buy_amt 
+                            SELECT SUM(lot_size_execute * {$price_col}) AS total_buy_amt 
                             FROM {$table_name} 
                             WHERE status = 0 AND participant_code = ? AND side = 'B' AND order_date BETWEEN ? AND ?
                         ");
@@ -705,7 +707,7 @@ else if(!empty($_POST["toDate1"]) && !empty($_POST["fromDate1"]) && !empty($_POS
                         </tr>';
 
                         $stmt1 = $dbh->prepare("
-                            SELECT SUM(lot_size_execute * order_exe_price) AS total_sell_amt 
+                            SELECT SUM(lot_size_execute * {$price_col}) AS total_sell_amt 
                             FROM {$table_name} 
                             WHERE status = 0 AND participant_code = ? AND side = 'S' AND order_date BETWEEN ? AND ?
                         ");
@@ -753,24 +755,24 @@ else if(!empty($_POST["toDate1"]) && !empty($_POST["fromDate1"]) && !empty($_POS
         <div class="row no-print">
             <div class="col-lg-12">
                 <div class="col-lg-6 text-left">
-                    &emsp;<a href="loadReportPrint.php?toDate1='.$toDate.'&fromDate1='.$fromDate.'&Clearing=Clearing&tablename='.$table_name.'&trade_type='.$text_sym.'" target="_blank" class="btn btn-default"><i class="fa fa-print"></i> Print</a>
+                    &emsp;<a href="loadReportPrint.php?toDate1='.$toDate.'&fromDate1='.$fromDate.'&Clearing=Clearing&sec_type='.$sec_type.'" target="_blank" class="btn btn-default"><i class="fa fa-print"></i> Print</a>
                 </div>
                 <div class="col-lg-6 text-right">
-                    <button class="btn btn-success" onclick="sendClearingReport(\''.$fromDate.'\', \''.$toDate.'\', \''.$table_name.'\', \''.$text_sym.'\')"><i class="fa fa-envelope"></i> Send Clearing Detail Report to Brokers</button>
+                    <button class="btn btn-success" onclick="sendClearingReport(\''.$fromDate.'\', \''.$toDate.'\', \''.$sec_type.'\')"><i class="fa fa-envelope"></i> Send Clearing Detail Report to Brokers</button>
                 </div>
             </div>
         </div>
         <br>
 
         <script type="text/javascript">
-          function sendClearingReport(from_date, to_date, table_name, trade_type) {
+          function sendClearingReport(from_date, to_date, sec_type) {
             if (confirm("Do you want to continue?")) {
               showLoading();
               var op = "sendClearingReportViaMail";
               $.ajax({
                 type: "POST",
                 url: "load.php",
-                data: "from_date=" + from_date + "&to_date=" + to_date + "&sendClearingReportViaMail=" + op + "&table_name=" + table_name + "&trade_type=" + trade_type,
+                data: "from_date=" + from_date + "&to_date=" + to_date + "&sendClearingReportViaMail=" + op + "&sec_type=" + sec_type,
                 success: function(data){
                 hideloading();
                 alert(data);
@@ -791,6 +793,7 @@ elseif (!empty($_POST["toDate"]) && !empty($_POST["fromDate"]) && !empty($_POST[
 
     $table_name = ($sec_type === 'OS') ? 'executed_orders' : 'bond_executed_orders';
     $trade_type = ($sec_type === 'OS') ? 'Equity' : 'Bond';
+    $price_col = ($sec_type === 'OS') ? 'order_exe_price' : 'dirty_price';
     
     echo '
     <div class="col-lg-12">
@@ -814,7 +817,7 @@ elseif (!empty($_POST["toDate"]) && !empty($_POST["fromDate"]) && !empty($_POST[
             $i = 1;
             foreach ($results as $res) {
                 $stmt = $dbh->prepare("
-                    SELECT SUM(lot_size_execute * order_exe_price) AS total_buy_amt 
+                    SELECT SUM(lot_size_execute * {$price_col}) AS total_buy_amt 
                     FROM {$table_name} WHERE status IN (0,1) AND participant_code = ? AND side = 'B' AND order_date BETWEEN ? AND ?
                 ");
                 
@@ -825,7 +828,7 @@ elseif (!empty($_POST["toDate"]) && !empty($_POST["fromDate"]) && !empty($_POST[
                 $total_buy_amt = $stmt->fetchColumn() ?: 0;
 
                 $stmt1 = $dbh->prepare("
-                    SELECT SUM(lot_size_execute * order_exe_price) AS total_sell_amt 
+                    SELECT SUM(lot_size_execute * {$price_col}) AS total_sell_amt 
                     FROM {$table_name} WHERE status IN (0,1) AND participant_code = ? AND side = 'S' AND order_date BETWEEN ? AND ?
                 ");
                 
@@ -867,15 +870,17 @@ elseif (!empty($_POST["toDate"]) && !empty($_POST["fromDate"]) && !empty($_POST[
     echo'</div>
     </div>';
     exit();
-    // error_log("Report Generation Completed");
 }
 elseif (isset($_POST['sendClearingReportViaMail']) && isset($_POST['from_date']) && isset($_POST['to_date'])) {
     $from_date = $_POST['from_date'];
     $to_date = $_POST['to_date'];
-    $table_name = $_POST['table_name'];
-    $trade_type = $_POST['trade_type'];
+    $sec_type = $_POST['sec_type'];
 
     $trade_date = date("d_M_Y", strtotime($from_date));
+
+    $table_name = ($sec_type === 'OS') ? 'executed_orders' : 'bond_executed_orders';
+    $trade_type = ($sec_type === 'OS') ? 'Equity' : 'Bond';
+    $price_col = ($sec_type === 'OS') ? 'order_exe_price' : 'dirty_price';
 
     include('clearing_mail.php');
 

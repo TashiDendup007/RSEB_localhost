@@ -1492,8 +1492,11 @@ elseif (!empty($_GET["detailNetting"])) {
 elseif (!empty($_GET["Clearing"])) {
     $toDate = $_GET['toDate1'].' 23:59:00';
     $fromDate = $_GET['fromDate1'].' 00:00:00';
-    $tablename = $_GET['tablename'];
     $sysTime = date("Y-m-d");
+
+    $sec_type = $_GET['sec_type'];
+    $tablename = ($sec_type === 'OS') ? 'executed_orders' : 'bond_executed_orders';
+    $trade_type = ($sec_type === 'OS') ? 'Equity' : 'Bond';
 
     echo'
     <html>
@@ -1553,7 +1556,7 @@ elseif (!empty($_GET["Clearing"])) {
                       $list_ord->bindParam(':tdate',$toDate);
                       $list_ord->execute();
                       foreach ($list_ord as $res2) {
-                        $totalbuy = $res2['lot_size_execute'] * $res2['order_exe_price'];
+                        $totalbuy = ($sec_type === 'OS') ? ($res2['lot_size_execute'] * $res2['order_exe_price']) : ($res2['lot_size_execute'] * $res2['dirty_price']);
                         $totalb = $totalb + $totalbuy;
                       }
                       echo'
@@ -1568,7 +1571,7 @@ elseif (!empty($_GET["Clearing"])) {
                       $list_ord->bindParam(':tdate', $toDate);
                       $list_ord->execute();
                       foreach ($list_ord as $res3) {
-                        $totalsell = $res3['lot_size_execute'] * $res3['order_exe_price'];
+                        $totalsell = ($sec_type === 'OS') ? ($res3['lot_size_execute'] * $res3['order_exe_price']) : ($res3['lot_size_execute'] * $res3['dirty_price']);
                         $totals = $totals + $totalsell;
                       }
                       echo'
@@ -1614,7 +1617,6 @@ elseif (!empty($_GET["Clearing"])) {
                   } else {
                     if($loop == 4) {
                     echo"
-                    <br><br><br><br><br>
                     <div class='row'>
                       <div class='col-xs-12'>
                         <div class='lead' style='font-size: 70%; margin-top:-10px;'>MEMBER : ".$res['participant_code']."</div>
@@ -1636,7 +1638,7 @@ elseif (!empty($_GET["Clearing"])) {
                       $list_ord->bindParam(':tdate', $toDate);
                       $list_ord->execute();
                       foreach ($list_ord as $res2) {
-                        $totalbuy = $res2['lot_size_execute'] * $res2['order_exe_price'];
+                        $totalbuy = ($sec_type === 'OS') ? ($res2['lot_size_execute'] * $res2['order_exe_price']) : ($res2['lot_size_execute'] * $res2['dirty_price']);
                         $totalb = $totalb + $totalbuy;
                       }
                       echo'
@@ -1652,7 +1654,7 @@ elseif (!empty($_GET["Clearing"])) {
                       $list_ord->bindParam(':tdate',$toDate);
                       $list_ord->execute();
                       foreach($list_ord as $res3){
-                        $totalsell = $res3['lot_size_execute'] * $res3['order_exe_price'];
+                        $totalsell = ($sec_type === 'OS') ? ($res3['lot_size_execute'] * $res3['order_exe_price']) : ($res3['lot_size_execute'] * $res3['dirty_price']);
                         $totals = $totals + $totalsell;
                       }   
                       echo'
@@ -1719,7 +1721,7 @@ elseif (!empty($_GET["Clearing"])) {
                       $list_ord->bindParam(':tdate',$toDate);
                       $list_ord->execute();
                       foreach ($list_ord as $res2) {
-                        $totalbuy = $res2['lot_size_execute'] * $res2['order_exe_price'];
+                        $totalbuy = ($sec_type === 'OS') ? ($res2['lot_size_execute'] * $res2['order_exe_price']) : ($res2['lot_size_execute'] * $res2['dirty_price']);
                         $totalb = $totalb + $totalbuy;
                       }
                       echo'
@@ -1733,7 +1735,7 @@ elseif (!empty($_GET["Clearing"])) {
                        $list_ord->bindParam(':fdate',$fromDate);$list_ord->bindParam(':tdate',$toDate);
                       $list_ord->execute();
                       foreach ($list_ord as $res3) {
-                        $totalsell = $res3['lot_size_execute'] * $res3['order_exe_price'];
+                        $totalsell = ($sec_type === 'OS') ? ($res3['lot_size_execute'] * $res3['order_exe_price']) : ($res3['lot_size_execute'] * $res3['dirty_price']);
                         $totals = $totals + $totalsell;
                       }   
                       echo'

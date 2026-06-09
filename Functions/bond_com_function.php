@@ -3,7 +3,7 @@
 // COMMISSION BRACKETS (Nu.)
 // ============================================================
 const COMMISSION_BRACKETS = [
-    ['min' => 1000,      'max' => 100000,      'comm_min' => 10,    'comm_max' => 100   ],
+    ['min' => 1000,      'max' => 100000,       'comm_min' => 10,    'comm_max' => 100   ],
     ['min' => 100001,    'max' => 250000,       'comm_min' => 105,   'comm_max' => 200   ],
     ['min' => 250001,    'max' => 500000,       'comm_min' => 210,   'comm_max' => 300   ],
     ['min' => 500001,    'max' => 1000000,      'comm_min' => 320,   'comm_max' => 450   ],

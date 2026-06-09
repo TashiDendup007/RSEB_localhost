@@ -312,7 +312,7 @@ function try_match_bond_trade(PDO $dbh, array $o): array
         // Deletes whichever order(s) reached zero remaining volume.
         // Three conditions prevent accidental cross-symbol deletes.
         $del_stmt = $dbh->prepare("DELETE FROM bond_orders WHERE flag_id = :flag_id AND symbol_id = :symbol_id AND cd_code = :cd_code");
-        $del_fin = $dbh->prepare("DELETE FROM bbo_finance WHERE flag_id = :flag_id AND status = 0 AND cd_code = :cd_code");
+        $del_fin = $dbh->prepare("DELETE FROM bbo_finance WHERE flag_id = :flag_id AND flag = 0 AND cd_code = :cd_code");
 
         if ($new_order_after === 0) {
             $del_stmt->execute([
